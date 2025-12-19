@@ -128,10 +128,8 @@ export default function ManagerEmployeeSummaryPage() {
           <p>{employee.workEmail || "—"}</p>
         </div>
 
-        <div>
-          <p className="text-white/60">Personal Email</p>
-          <p>{employee.personalEmail || "—"}</p>
-        </div>
+        {/* BR 18b: Privacy restrictions - Personal Email is sensitive, managers shouldn't see it */}
+        {/* Removed personalEmail from manager view per privacy requirements */}
 
       </div>
     </div>

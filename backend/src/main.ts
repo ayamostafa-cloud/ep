@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as dotenv from 'dotenv';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   // Load .env BEFORE anything else
@@ -10,6 +11,10 @@ async function bootstrap() {
   console.log("BACKEND DB URI =>", process.env.MONGO_URI);
 
   const app = await NestFactory.create(AppModule);
+
+  // Increase body size limit to 10MB for image uploads (base64 encoded images can be large)
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ limit: '10mb', extended: true }));
 
   // =============================
   //          FIXED CORS
