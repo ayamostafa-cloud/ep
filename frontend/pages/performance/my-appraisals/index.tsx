@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import api from "../../../api/axios";
+import { useRouteGuard } from "../../../utils/routeGuard";
 
 export default function MyAppraisalsPage() {
   const router = useRouter();
+  // Route guard: Employee only
+  useRouteGuard("EMPLOYEE");
 
   const [appraisals, setAppraisals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +99,8 @@ export default function MyAppraisalsPage() {
                       {a.overallRatingLabel || "—"}
                     </td>
                     <td className="px-6 py-4 text-right">
+                      {/* Only show View button for PUBLISHED appraisals */}
+                      {a.status === "HR_PUBLISHED" && (
                       <button
                         onClick={() =>
                           router.push(`/performance/my-appraisals/${a._id}`)
@@ -104,6 +109,10 @@ export default function MyAppraisalsPage() {
                       >
                         View
                       </button>
+                      )}
+                      {a.status !== "HR_PUBLISHED" && (
+                        <span className="text-white/40 text-sm">Not published</span>
+                      )}
                     </td>
                   </tr>
                 ))}

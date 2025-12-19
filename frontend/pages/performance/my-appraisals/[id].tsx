@@ -1,10 +1,13 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import api from "../../../api/axios";
+import { useRouteGuard } from "../../../utils/routeGuard";
 
 export default function MyAppraisalDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
+  // Route guard: Employee only
+  useRouteGuard("EMPLOYEE");
 
   const [appraisal, setAppraisal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +51,12 @@ export default function MyAppraisalDetailsPage() {
       const res = await api.get(`/performance/my-appraisals/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // Only allow viewing if status is HR_PUBLISHED
+      if (res.data.status !== "HR_PUBLISHED") {
+        setError("This appraisal is not yet published. It will be visible after HR publishes it.");
+        return;
+      }
 
       setAppraisal(res.data);
       // Check if already acknowledged
