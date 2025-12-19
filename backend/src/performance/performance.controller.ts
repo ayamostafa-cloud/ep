@@ -9,6 +9,8 @@ import {
   Req,
   Query,
   UseGuards,
+  NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PerformanceService } from './performance.service';
 
@@ -21,7 +23,6 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ADMIN_ROLES, EMPLOYEE_ROLES, HR_ROLES, MANAGER_ROLES } from '../common/constants/role-groups';
-import { NotFoundException } from '@nestjs/common';
 
 @Controller('performance')
 export class PerformanceController {
@@ -227,8 +228,9 @@ export class PerformanceController {
 @Patch('cycles/:id/publish-results')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(...HR_ROLES, ...ADMIN_ROLES)
-publishCycleResults(@Param('id') id: string) {
-  return this.performanceService.publishCycleResults(id);
+publishCycleResults(@Param('id') id: string, @Req() req: any) {
+  const hrEmployeeProfileId = req.user.id;
+  return this.performanceService.publishCycleResults(id, hrEmployeeProfileId);
 }
 @Delete('disputes/:id')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -256,7 +258,7 @@ deleteDispute(@Param('id') id: string) {
 
   @Get('disputes')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...HR_ROLES, ...MANAGER_ROLES, ...ADMIN_ROLES)
+@Roles(...HR_ROLES, ...ADMIN_ROLES)
 listDisputes(@Query('status') status?: string) {
   return this.performanceService.listDisputes(status);
 }
@@ -277,12 +279,25 @@ resolveDispute(
 
 @Get('disputes/:id')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...HR_ROLES, ...MANAGER_ROLES, ...ADMIN_ROLES, ...EMPLOYEE_ROLES)
-async getDisputeById(@Param('id') id: string) {
+@Roles(...HR_ROLES, ...ADMIN_ROLES, ...EMPLOYEE_ROLES)
+async getDisputeById(@Param('id') id: string, @Req() req: any) {
+  const userId = req.user.id;
+  const userRole = req.user.role;
+  
   const dispute = await this.performanceService.getDisputeById(id);
-  if (!dispute) {
-    throw new NotFoundException('Dispute not found');
+
+  // Employees can only view their own disputes
+  // HR and ADMIN can view all disputes
+  // Managers have NO access to disputes
+  const isHR = HR_ROLES.includes(userRole) || ADMIN_ROLES.includes(userRole);
+  const isEmployeeOwner = dispute.raisedByEmployeeId?.toString() === userId;
+
+  if (!isHR && !isEmployeeOwner) {
+    throw new ForbiddenException(
+      'You can only view disputes you raised. Managers have no access to disputes.',
+    );
   }
+
   return dispute;
 }
 }
