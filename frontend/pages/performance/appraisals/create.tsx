@@ -12,6 +12,7 @@ export default function CreateAppraisalPage() {
 
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedCycle, setSelectedCycle] = useState<any>(null);
   const [form, setForm] = useState({
     employeeProfileId: "",
     cycleId: "",
@@ -24,12 +25,35 @@ export default function CreateAppraisalPage() {
 
   useEffect(() => {
     // prefill from query
+    const newCycleId = typeof cycleId === "string" ? cycleId : "";
+    const newEmployeeNumber = typeof employeeNumber === "string" ? employeeNumber : "";
+    
     setForm((p) => ({
       ...p,
-      employeeProfileId: typeof employeeNumber === "string" ? employeeNumber : p.employeeProfileId,
-      cycleId: typeof cycleId === "string" ? cycleId : p.cycleId,
+      employeeProfileId: newEmployeeNumber || p.employeeProfileId,
+      cycleId: newCycleId || p.cycleId,
     }));
+
+    // Load cycle details if cycleId is prefilled
+    if (newCycleId) {
+      loadCycleDetails(newCycleId);
+    }
   }, [cycleId, employeeNumber]);
+
+  async function loadCycleDetails(cycleIdValue: string) {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const cycleRes = await api.get(`/performance/cycles/${cycleIdValue}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSelectedCycle(cycleRes.data);
+    } catch (e: any) {
+      console.error("Failed to load cycle details:", e);
+      setSelectedCycle(null);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -61,8 +85,30 @@ export default function CreateAppraisalPage() {
   }, [router]);
 
   function onChange(e: any) {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setForm((p) => ({ ...p, [name]: value }));
+
+    // When cycle changes, load cycle details to get assigned templates
+    if (name === "cycleId") {
+      if (value) {
+        loadCycleDetails(value);
+      } else {
+        setSelectedCycle(null);
+        // Clear template selection when cycle is cleared
+        setForm((p) => ({ ...p, templateId: "" }));
+      }
+    }
   }
+
+  // Filter templates to only show those assigned to the selected cycle
+  const availableTemplates = 
+    Array.isArray(selectedCycle?.templateAssignments) && selectedCycle.templateAssignments.length > 0
+      ? templates.filter((t) =>
+          selectedCycle.templateAssignments.some(
+            (ta: any) => ta.templateId?.toString() === t._id
+          )
+        )
+      : [];
 
   async function submit(e: any) {
     e.preventDefault();
@@ -160,15 +206,27 @@ export default function CreateAppraisalPage() {
               name="templateId"
               value={form.templateId}
               onChange={onChange}
-              className="w-full mt-1 px-4 py-3 rounded bg-white/10 border border-white/20 outline-none"
+              disabled={!form.cycleId}
+              className="w-full mt-1 px-4 py-3 rounded bg-white/10 border border-white/20 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">Select template</option>
-              {templates.map((t) => (
+              <option value="">
+                {form.cycleId
+                  ? availableTemplates.length === 0
+                    ? "No templates assigned to this cycle"
+                    : "Select template"
+                  : "Select cycle first"}
+              </option>
+              {availableTemplates.map((t) => (
                 <option key={t._id} value={t._id}>
                   {t.name}
                 </option>
               ))}
             </select>
+            {form.cycleId && availableTemplates.length === 0 && (
+              <p className="text-yellow-400 text-xs mt-1">
+                This cycle has no templates assigned. HR must assign templates to the cycle first.
+              </p>
+            )}
           </div>
 
           <button

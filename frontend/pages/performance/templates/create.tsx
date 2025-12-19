@@ -58,7 +58,16 @@ export default function CreateTemplatePage() {
     }
 
     try {
-      await axios.post("/performance/templates", form);
+      const token = localStorage.getItem("token");
+      // Map templateType to type for the DTO (backend DTO expects 'type')
+      const payload = {
+        ...form,
+        type: form.templateType,
+        ratingScaleType: form.ratingScale.type,
+      };
+      await axios.post("/performance/templates", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       router.push("/performance/templates");
     } catch (e: any) {
       setError(e?.response?.data?.message || "Failed to create template");
@@ -86,7 +95,10 @@ export default function CreateTemplatePage() {
             }
           >
             <option value="ANNUAL">Annual</option>
+            <option value="SEMI_ANNUAL">Semi Annual</option>
+            <option value="PROBATIONARY">Probationary</option>
             <option value="PROJECT">Project</option>
+            <option value="AD_HOC">Ad Hoc</option>
           </select>
 
           {/* CRITERIA SECTION */}

@@ -11,6 +11,7 @@ export default function EditTemplatePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /* ===============================
      LOAD TEMPLATE (BACKEND)
@@ -84,9 +85,15 @@ export default function EditTemplatePage() {
 
       const token = localStorage.getItem("token");
 
-      await axios.patch(
+      // Ensure templateType is sent correctly (schema expects templateType)
+      const payload = {
+        ...form,
+        templateType: form.templateType, // Keep templateType as is
+      };
+
+      const response = await axios.patch(
         `/performance/templates/${id}`,
-        form,
+        payload,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -94,7 +101,17 @@ export default function EditTemplatePage() {
         }
       );
 
-      router.push("/performance/templates");
+      // Update form with the response data to show updated values immediately
+      if (response.data) {
+        setForm(response.data);
+      } else {
+        // If no response data, reload from server
+        await loadTemplate();
+      }
+      
+      // Show success message
+      setSuccessMessage("Template updated successfully!");
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error("SAVE TEMPLATE ERROR", err);
       setError(err?.response?.data?.message || "Failed to save changes");
@@ -196,6 +213,18 @@ export default function EditTemplatePage() {
         </div>
 
         {error && <div className={styles.error}>{error}</div>}
+        {successMessage && (
+          <div style={{ 
+            padding: "10px", 
+            backgroundColor: "rgba(34, 197, 94, 0.2)", 
+            border: "1px solid rgb(34, 197, 94)", 
+            borderRadius: "4px",
+            color: "rgb(74, 222, 128)",
+            marginBottom: "10px"
+          }}>
+            {successMessage}
+          </div>
+        )}
 
         <button
           className={styles.button}
