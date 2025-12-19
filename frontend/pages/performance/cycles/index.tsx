@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import api from "../../../api/axios";
+import { getCurrentRole } from "../../../utils/routeGuard";
 
 type Cycle = {
   _id: string;
@@ -35,7 +36,17 @@ export default function PerformanceCyclesPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        setCycles(res.data || []);
+        const cyclesList = Array.isArray(res.data)
+          ? res.data
+          : res.data?.items || res.data?.data || [];
+
+        // For managers, filter to show ONLY ACTIVE cycles
+        if (isManager) {
+          const activeCycles = cyclesList.filter((c: any) => c.status === "ACTIVE");
+          setCycles(activeCycles);
+        } else {
+          setCycles(cyclesList);
+        }
       } catch (e: any) {
         setError(e.response?.data?.message || "Failed to load cycles ❌");
       } finally {
@@ -62,16 +73,28 @@ export default function PerformanceCyclesPage() {
             <p className="text-white/60 text-sm mt-1">
               {isManager
                 ? "Manager view (read-only). Open an ACTIVE cycle to create/continue appraisals."
+                : getCurrentRole() === "HR"
+                ? "Cycle management. Create cycles and assign templates to departments."
                 : "Cycle management."}
             </p>
           </div>
 
+          <div className="flex gap-2">
+            {getCurrentRole() === "HR" && (
+              <button
+                onClick={() => router.push("/performance/cycles/create")}
+                className="glass-btn px-5 py-2 bg-green-600/20 hover:bg-green-600/30 border-green-500/30"
+              >
+                + Create Cycle
+              </button>
+            )}
           <button
             onClick={() => router.push("/dashboard")}
             className="glass-btn px-5 py-2"
           >
             ← Back
           </button>
+          </div>
         </div>
 
         {error && <p className="text-red-400 mb-4">{error}</p>}
