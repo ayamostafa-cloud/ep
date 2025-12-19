@@ -51,6 +51,22 @@ export default function OrgChartPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  // Get user role to determine back button destination
+  const getBackUrl = () => {
+    if (typeof window === "undefined") return "/dashboard";
+    const role = localStorage.getItem("role");
+    const normalizedRole = (role || "").toUpperCase().replaceAll(" ", "_");
+    
+    // For managers (DEPARTMENT_HEAD), go back to dashboard
+    if (normalizedRole === "DEPARTMENT_HEAD" || normalizedRole === "HR_MANAGER") {
+      return "/dashboard";
+    }
+    
+    // For system admin, go to organization structure home
+    return "/organization-structure";
+  };
+
   async function loadHierarchy() {
     try {
       const res = await api.get("/organization-structure/hierarchy");
@@ -86,10 +102,10 @@ export default function OrgChartPage() {
       <h1 className="text-3xl font-light mb-8">Organization Chart</h1>
       <button
             type="button"
-            onClick={() => router.push("/organization-structure")}
+            onClick={() => router.push(getBackUrl())}
             className="bg-gray-600 px-4 py-2 rounded hover:bg-gray-700"
           >
-            Back
+            ← Back
           </button>
       {hierarchy.map((dept: any, index: number) => (
         <div

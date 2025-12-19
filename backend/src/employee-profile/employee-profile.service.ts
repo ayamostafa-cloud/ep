@@ -330,6 +330,7 @@ export class EmployeeProfileService {
     'workEmail',
     'biography',
     'address',
+    'profilePictureUrl',
   ];
 
   const payload: any = {};
@@ -482,8 +483,20 @@ export class EmployeeProfileService {
   }
 
  async getTeamSummaryForManager(managerId: string) {
+  // First, get the manager's profile to find their primaryPositionId
+  const manager = await this.employeeModel.findById(managerId);
+  if (!manager) {
+    throw new NotFoundException('Manager profile not found');
+  }
+
+  if (!manager.primaryPositionId) {
+    // Manager has no position assigned, return empty array
+    return [];
+  }
+
+  // Find all employees where supervisorPositionId matches the manager's primaryPositionId
   return this.employeeModel
-    .find({ supervisorPositionId: managerId })
+    .find({ supervisorPositionId: manager.primaryPositionId })
     .populate('primaryDepartmentId', 'name')
     .populate('primaryPositionId', 'title name')
     .select('firstName lastName employeeNumber status dateOfHire primaryDepartmentId primaryPositionId')
@@ -617,9 +630,20 @@ export class EmployeeProfileService {
       throw new BadRequestException('Invalid managerId');
     }
 
+    // Get the manager's profile to find their primaryPositionId
+    const manager = await this.employeeModel.findById(managerId);
+    if (!manager) {
+      throw new NotFoundException('Manager not found');
+    }
+
+    if (!manager.primaryPositionId) {
+      throw new BadRequestException('Manager does not have a position assigned. Please assign a position to the manager first.');
+    }
+
+    // Set the employee's supervisorPositionId to the manager's primaryPositionId
     return this.employeeModel.findByIdAndUpdate(
       employeeId,
-      { supervisorPositionId: managerId },
+      { supervisorPositionId: manager.primaryPositionId },
       { new: true },
     );
   }
